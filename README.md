@@ -1,5 +1,5 @@
 # UW-PHI512
-This file reviews the data analysis skills I learned through the PHI512 course in the University of Washington.
+This file reviews the data analysis skills I learned through the PHI512 course in the University of Washington, Fall 2021.
 
 ## Table of contents
 * [Acknowledgement](#acknowledgement)
