@@ -1,0 +1,448 @@
+---
+title: "PHI512 Review"
+author: "Erh-Chi Hsu"
+date: "12/20/2021"
+output: 
+  html_document:
+    df_print: paged
+    highlight: default
+    toc: true
+    toc_float: true
+    theme: united
+    fig_width: 7
+    fig_height: 4
+    fig_caption: true
+    code_folding: show
+---
+```{r library, echo = TRUE, message = FALSE, warning = FALSE}
+library(tidyverse)
+library(rigr)
+library(knitr)
+library(dplyr)
+library(epiR)
+```
+
+# Basic
+
+The datasets' names I used in this file include wcgs, fp, aug, heart, chs_recode, carotine, mri, psa, and sep.
+
+## Read dataset
+
+```{r ,echo = TRUE, message = FALSE, warning = FALSE}
+#read and define the file
+wcgs <- read.csv("~/Google Drive/0_研究所學業/2021fall/2PHI512Analytic/wcgs.csv")
+fp <- read.csv("~/Google Drive/0_研究所學業/2021fall/2PHI512Analytic/dfmo.csv")
+aug <- read.csv("~/Google Drive/0_研究所學業/2021fall/2PHI512Analytic/augmentation.csv")
+heart <- read.csv("~/Google Drive/0_研究所學業/2021fall/2PHI512Analytic/assignment/problemset12/heart.csv")
+chs_recode <- read.csv("~/Google Drive/0_研究所學業/2021fall/2PHI512Analytic/assignment/problemset13/chs_recode.csv")
+carotine <- read.csv("~/Google Drive/0_研究所學業/2021fall/2PHI512Analytic/R/lab9/carotine.csv")
+#read file from a website
+mri <- read.table("http://www.emersonstatistics.com/datasets/mri.txt",
+                  header=TRUE)
+psa <- read.table("http://www.emersonstatistics.com/datasets/psa.txt",
+header=TRUE)
+sep <- read.table("http://www.emersonstatistics.com/datasets/sep.txt", header = TRUE)
+```
+
+## Take a look into the data
+
+```{r}
+w.names<-names(wcgs) 
+w.names #variables names
+w.number<-ncol(wcgs)
+w.number #number of variables
+w.obs<-nrow(wcgs)
+w.obs #number of observations
+```
+
+## Remove NA
+
+```{r}
+#na.rm = TRUE
+test_vec <- c(1, 4, NA, 12, 21, 14)
+mean(test_vec, na.rm = TRUE) 
+quantile(test_vec, probs = 0.5, na.rm = TRUE)
+#remove NA in a certain column (change the original dataset)
+mri <- mri[!is.na(mri$ldl),]
+#remove NA in a certain column (create a new variable)
+mri$death5 <- NA
+mri$death5[mri$obstime >= 5*365.25] <- 0 
+mri$death5[mri$obstime < 5*365.25] <- 1 
+mri$highldl <- NA
+mri$highldl[mri$ldl < 160] <- 0
+mri$highldl[mri$ldl >= 160] <- 1
+#example
+psa$severe <- NA
+psa$severe[psa$bss < 3] <- 0
+psa$severe[psa$bss == 3] <- 1
+psa$psaover100 <- NA
+psa$psaover100[psa$pretxpsa <= 100] <- 0
+psa$psaover100[psa$pretxpsa > 100] <- 1
+```
+
+## Create dataframe
+
+```{r}
+withIVT <- c(70, 75, 86, 90, 96, 102, 110, 114, 116, 117,
+120, 130, 136, 142, 145, 152, 170, 182)
+withoutIVT <- c(40, 50, 65, 70, 76, 78, 80, 82, 85, 88,
+88, 89, 90, 94, 95, 96, 98, 98, 100, 102,
+105, 107, 109, 110, 114, 115, 120, 125,
+130, 135, 138, 150, 165, 170, 180)
+qrs <- data.frame(time = c(withIVT, withoutIVT), IVT = c(rep("with", length(withIVT)), rep("without", length(withoutIVT))))
+qrs
+```
+
+## Create 2 by 2 table
+
+```{r}
+#margin 1 means using rows as total.
+table(mri$highldl,mri$death5) %>% prop.table(margin=1)
+```
+
+## Get a certain proportion or quantity
+
+```{r}
+#the proportion below a certain point (x, mean, sd)
+pnorm(88, 120, 20)
+#the proportion above a certain point
+1 - pnorm(128, 120, 20)
+#the quantity below a certain proportion (prop, mean, sd)
+qnorm(0.25, 120, 20)
+```
+
+## Getting a standard deviation and confidence interval
+
+```{r}
+mean_B <- wcgs %>% filter(dibpat == "Type B") %>% pull(sbp) %>% mean()
+mean_sd <- 17.2/sqrt(1589)
+mean_B + c(-1.96*mean_sd, 1.96 * mean_sd)
+```
+
+
+# Continuous data
+
+## Measure of spread
+
+```{r}
+range(wcgs$age)
+quantile(wcgs$age, probs = c(0.25, 0.75))
+sd(wcgs$age)
+var(wcgs$age)
+```
+
+
+## Descriptive summary
+
+```{r}
+#descriptive summary by piping. 
+#Cons: no SD, bugs occur when using groupby
+wcgs %>% filter(age>45) %>% pull(sbp) %>% summary()
+#Pros: has N, has SD, min and max
+#Cons: bugs occur when using groupby
+wcgs %>% filter(age>45) %>% pull(sbp) %>% descrip()
+#a more complicated way to pipe groupby summary
+wcgs %>% group_by(dibpat) %>% summarize(count=n(), mean=mean(age), median=median(age), sd=sd(age), IQR=IQR(age), range=(max(age)-min(age)))
+```
+
+```{r}
+#descriptive summary by tapply
+#Pros: has SD, don't need to use groupby
+#tapply(continuous, binary, descrip)
+tapply(wcgs$sbp, wcgs$smoke, descrip)
+```
+
+```{r}
+#fancy way to creat descriptive table
+t1<- heart %>% group_by(txt) %>% summarise(
+  'N' = length(pdi),
+  'Missing' = sum(is.na(pdi)),
+  'Mean' = mean(pdi, na.rm = T), 
+  'SD' = sd(pdi, na.rm = T),
+  'Median' = median(pdi, na.rm = T),
+  'IQR' = IQR(pdi, na.rm = T), 
+  'Range' = max(pdi, na.rm = T) - min(pdi, na.rm = T))  %>% round(2)
+
+t2<- heart %>% summarise(
+  'txt' = 3,
+  'N' = length(pdi),
+  'Missing' = sum(is.na(pdi)),
+  'Mean' = mean(pdi, na.rm = T), 
+  'SD' = sd(pdi, na.rm = T),
+  'Median' = median(pdi, na.rm = T),
+  'IQR' = IQR(pdi, na.rm = T), 
+  'Range' = max(pdi, na.rm = T) - min(pdi, na.rm = T))  %>% round(2)
+
+table1 <- rbind(t1,t2)
+colnames(table1)[1] <- ''
+
+table1[,1] <- c('Circulatory Arrest','Low-flow Bypass','Overall')
+t(table1) %>% kable()
+```
+
+
+## Visualized descriptive data
+
+### Boxplot
+
+```{r fig.height = 7, fig.width = 5.5}
+#boxplot method 1 
+treatment0<-fp%>%filter(dfmo==0)%>%pull(put0)
+treatment6<-fp%>%filter(dfmo==0)%>%pull(put6)
+control0<-fp%>%filter(dfmo==1)%>%pull(put0)
+control6<-fp%>%filter(dfmo==1)%>%pull(put6)
+boxplot(treatment0,treatment6,control0, control6, xlab= "Treatment Status", ylab= "putrescine level (umol/mg)", main="putrescine level by groups from baseline to 6 months", names=c("no DFMO treatment","no DFMO treatment", "DFMO treatment", "DFMO treatment"),ylim=c(0,9),las=1, boxwex = 0.5,col = c("pink", "purple","pink", "purple"), data=fp)
+#color indication
+legend(3, 9, c("baseline", "6 months"),
+       fill = c("pink", "purple"))
+```
+
+```{r}
+#boxplot method 2
+boxplot(fp$put0 ~factor(dfmo), xlab= "Treatment Status", ylab= "putrescine level (umol/mg)", main="putrescine level by groups from baseline (black) to 6 months (red)", names=c("no DFMO", "DFMO treatment"),data=fp)
+boxplot(fp$put6 ~factor(dfmo), xlab= "Treatment Status", ylab= "putrescine level (umol/mg)",ylim=c(0,2.5), names=c("no DFMO", "DFMO treatment"),data=fp,add=TRUE, border="red")
+```
+
+### Histogram
+
+```{r}
+#pipe out a histogram
+wcgs %>% filter(dibpat == "Type B") %>% pull(sbp) %>% hist(main = "Histogram of Systolic Blood Pressure for Type B Participants", xlab = "Systolic Blood Pressure (mm Hg)")
+#use base R
+hist(wcgs[wcgs$dibpat == "Type B",c("sbp")], main = "Histogram of Systolic Blood Pressure for Type B Participants", xlab = "Systolic Blood Pressure (mm Hg)")
+```
+
+```{r}
+#create fancy overlapping histogram
+null <- rbinom(1e6,200,0.66)/200
+alt <- rbinom(1e6,200,0.75)/200
+hist(null, breaks = 30, col = rgb(0,0,1,0.5), xlab = "Proportion of pts w/ clinical improvement", xlim = c(0.5,1), main = "Plot of sampling dist under null, and suspected alternative", freq = FALSE, ylim=c(0,20), cex.main = 0.6)
+abline(v = quantile(null, 0.95), col = "black", lwd = 3)
+h <- hist(alt, breaks = 30, col = rgb(1,0,0,0.5), freq = FALSE, add = TRUE)
+cuts <- cut(h$breaks, c(-Inf,quantile(null, 0.95),Inf))
+cutscols <- ifelse(cuts == cuts[1], rgb(1,0,0,0.5), rgb(0,1,0,0.5))
+plot(h, add = TRUE, col = cutscols, freq = FALSE)
+```
+
+
+### Density plot
+
+```{r}
+d1 <- density(wcgs$age)
+plot(d1)
+d2 <- density(wcgs$age, bw = 5)
+plot(d2, xlab = "Age", main = "Distribution of Age")
+```
+
+### Scatterplot
+
+```{r}
+plot(sbp ~ weight, data = wcgs, 
+     xlab = "Weight (lbs)", ylab = "Systolic blood pressure (mm Hg)",
+     pch = 16, cex = 0.6)
+```
+
+
+
+
+# Categorical(Binary) data
+
+```{r}
+wcgs %>% filter(dibpat == "Type B") %>% pull(smoke) %>% table() %>% prop.table() %>% kable()
+```
+
+## Classify continuous data into categorical data
+
+```{r}
+#reclassify continuous data
+aug$classification <- cut(aug$Score, c(0, 8, 17, 24, 52), include.lowest = TRUE)
+#rename categories
+levels(aug$classification)<-c("None", "Mild", "Moderate", "Severe")
+#create table
+aug%>%
+  filter(Treatment_Group=="Augmentation")%>%
+  pull(classification)%>%
+  table()%>%
+  prop.table()%>%
+  kable()
+```
+
+## Visualized categorical data by barplot
+
+```{r}
+#visualized by barplot
+wcgs %>% pull(agec) %>% 
+  table() %>% 
+  barplot(main = "Distribution of Ages",
+          xlab = "Age group",
+          ylab = "Number of people")
+```
+
+
+# Test for mean (Continuous data)
+
+## One Sample
+
+```{r}
+#one sample ttest
+ttest(psa$pretxpsa, null.hypoth = 100)
+#one sample ttest (removing NA)
+ttest(psa$pretxpsa[!is.na(psa$bss)], null.hypoth = 100)
+```
+
+## Two sample
+
+```{r}
+#unpaired
+sbp_typeA <- wcgs %>% filter(dibpat == "Type A") %>% pull(sbp)
+sbp_typeB <- wcgs %>% filter(dibpat == "Type B") %>% pull(sbp)
+ttest(sbp_typeA, sbp_typeB)
+#paired
+ttest(sep$n35R, sep$n35L, matched = TRUE)
+```
+
+# Categorize continuouse data
+
+```{r}
+#q1 create a new binary variable
+carotine$arm_bi<-ifelse(carotine$arm<30, 1, 0)
+#1= 30 mg/day or greater of beta-carotene.
+carotine$diff<- (carotine$followup.vite-carotine$baseline.vite)
+carotine$diff_bi<-ifelse(carotine$diff>=0, 1, 0)
+#1= difference ≥ 0
+```
+
+```{r}
+carotinetable<- table(carotine$arm_bi, carotine$diff_bi)
+rownames(carotinetable) <- c(">=30", "<30")
+colnames(carotinetable) <- c("difference<0", "difference>=0")
+carotinetable
+```
+
+# Test for proportion (Binary or Categorical data)
+
+## Check whether the samples are normal approximation
+
+```{r}
+psa %>% filter(severe == 1) %>% pull(psaover100) %>% table()
+#the rule of thumb: np≥10 and n(1−p)≥10 where n=25 and p=0.5 (this is the value of p under H0). We get 13 in either of case so we can use a one sample z-test for the proportion (the normal approximation)
+proptesti(x1 = 17, n1 = 26, null.hypoth = 0.5,conf.level = 0.95,alternative = "two.sided", correct = TRUE)
+```
+
+## One Sample 
+
+### Using stimulation
+
+```{r}
+#demo
+nexperiments <- 1e6 # 1 million experiments
+ninfants <- 16 # number of total trials within an experiment
+set.seed(2) # set a seed so that our results are replicable
+samples <- rbinom(nexperiments, ninfants, prob = 0.5)
+hist(samples)
+#finding confidence interval
+nexperiments <- 1e6 # 1 million experiments
+nptps <- 107 # number of total trials within an experiment
+set.seed(512)
+#p0 = 0.13
+samples13 <- rbinom(nexperiments, nptps, prob = 0.13)
+quantile(samples13, probs = c(0.025, 0.975))
+```
+
+### Exact test
+
+```{r}
+#when the x1 and n1 are already known
+proptesti(x1 = 14, n1 = 16, exact = TRUE)
+#when null is not 0.5, and alternative is greater but not "not equal"
+proptesti(x1 = 14, n1 = 16, exact = TRUE, 
+          null.hypoth = 0.6, alternative = "greater")
+#two sided test
+proptesti(x1 = 146, n1 = 191, null.hypoth = 0.66, exact = TRUE,alternative = "two.sided")
+#the way to get x1 and n1
+mri %>% filter(highldl == 1) %>% nrow()
+mri %>% filter(highldl == 1, death5 == 1) %>% nrow()
+#one sample z-test for proportion (not applied to rule of thumb)
+proptesti(x1 = 14, n1 = 107, exact = TRUE, null.hypoth = 0.16)
+#one sample exact binomial for proportion (applied to rule of thumb)
+proptesti(x1 = 14, n1 = 107, correct = TRUE, null.hypoth = 0.16)
+#more example
+a<-chs_recode%>%filter(age>=65 & mi==1)%>%nrow()
+b<-chs_recode%>%filter(age>=65)%>%nrow()
+proptesti(a,b,null.hypoth = 0.1, exact=FALSE, correct=TRUE)
+```
+
+## Two sample
+
+### Large sample size (>=5)
+
+```{r}
+#paired
+chs_recode_new <- chs_recode[701:1000,] #with only the last 300 patients in the dataset
+malemi2<-chs_recode_new%>%filter(sex=="male")%>%pull(mi)
+femalemi2<-chs_recode_new%>%filter(sex=="female")%>%pull(mi)
+proptest(malemi2, femalemi2)
+```
+
+```{r}
+#two group Chi-square
+data<-matrix(c(86, 8, 19914, 19992), nrow=2)
+epi.2by2(data, method="cohort.count")
+#more example
+epi.2by2(table(carotine$arm_bi, carotine$diff_bi), method="cohort.count")
+```
+
+### Small sample size (<5)
+
+```{r}
+#recategorized
+carotinetable5l<- table(carotine$arm, carotine$diff_bi)
+rownames(carotinetable5l) <- c("0", "15", "30", "45", "60")
+colnames(carotinetable5l) <- c("difference<0", "difference>=0")
+carotinetable5l
+```
+```{r}
+fisher.test(carotinetable5l)
+```
+
+### Paired Binary data
+
+```{r}
+mat <- matrix(c(195, 5, 15, 35), ncol = 2, nrow = 2)
+mcnemar_res <- mcnemar.test(mat)
+```
+
+
+## More than two groups of samples
+
+```{r}
+#Chi-square
+mat<-matrix(c(89,640,194,3190))
+chisq.test(mat)
+```
+
+
+# Correlation
+
+```{r}
+cor(wcgs$weight, wcgs$sbp)
+cor(wcgs$weight, wcgs$sbp, method = "kendall")
+cor(wcgs$weight, wcgs$sbp, method = "spearman")
+```
+
+## Fitting the Model
+
+```{r}
+model <- regress("mean", sbp ~ weight, data = wcgs)
+model
+```
+
+## Scatterplot
+
+```{r}
+plot(sbp ~ weight, data = wcgs, 
+     xlab = "Weight (lbs)", ylab = "Systolic blood pressure (mm Hg)",
+     pch = 16, cex = 0.6)
+abline(model, col = "blue", lwd=2)
+```
+
