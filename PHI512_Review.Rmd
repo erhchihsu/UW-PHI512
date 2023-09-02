@@ -30,12 +30,12 @@ The datasets' names I used in this file include wcgs, fp, aug, heart, chs_recode
 
 ```{r ,echo = TRUE, message = FALSE, warning = FALSE}
 #read and define the file
-wcgs <- read.csv("~/Google Drive/0_研究所學業/2021fall/2PHI512Analytic/wcgs.csv")
-fp <- read.csv("~/Google Drive/0_研究所學業/2021fall/2PHI512Analytic/dfmo.csv")
-aug <- read.csv("~/Google Drive/0_研究所學業/2021fall/2PHI512Analytic/augmentation.csv")
-heart <- read.csv("~/Google Drive/0_研究所學業/2021fall/2PHI512Analytic/assignment/problemset12/heart.csv")
-chs_recode <- read.csv("~/Google Drive/0_研究所學業/2021fall/2PHI512Analytic/assignment/problemset13/chs_recode.csv")
-carotine <- read.csv("~/Google Drive/0_研究所學業/2021fall/2PHI512Analytic/R/lab9/carotine.csv")
+wcgs <- read.csv("~/Google Drive/0_MPH/2021fall/2PHI512Analytic/wcgs.csv")
+fp <- read.csv("~/Google Drive/0_MPH/2021fall/2PHI512Analytic/dfmo.csv")
+aug <- read.csv("~/Google Drive/0_MPH/2021fall/2PHI512Analytic/augmentation.csv")
+heart <- read.csv("~/Google Drive/0_MPH/2021fall/2PHI512Analytic/assignment/problemset12/heart.csv")
+chs_recode <- read.csv("~/Google Drive/0_MPH/2021fall/2PHI512Analytic/assignment/problemset13/chs_recode.csv")
+carotine <- read.csv("~/Google Drive/0_MPH/2021fall/2PHI512Analytic/R/lab9/carotine.csv")
 #read file from a website
 mri <- read.table("http://www.emersonstatistics.com/datasets/mri.txt",
                   header=TRUE)
